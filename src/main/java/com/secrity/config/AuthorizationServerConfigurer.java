@@ -73,6 +73,7 @@ public class AuthorizationServerConfigurer extends AuthorizationServerConfigurer
             .withClient("cl1")  //客戶端id
             .secret(new BCryptPasswordEncoder().encode("123")) //密匙
             .scopes("all") //授權範圍
+            .resourceIds("resource1") //设置这个client可以访问哪些资源服务器，资源服务id在资源服务中设置，若果没有设置则可以访问所有资源服务
             .redirectUris("http://www.baidu.com")  //重定向url
             .accessTokenValiditySeconds(3600)  //token有效時間
             .refreshTokenValiditySeconds(3600)  //refresh有效時間
@@ -140,8 +141,9 @@ public class AuthorizationServerConfigurer extends AuthorizationServerConfigurer
     @Override
     public void configure(
         AuthorizationServerSecurityConfigurer security) throws Exception {
-        //用来配置令牌端点(Token Endpoint)的安全约束
-        super.configure(security);
+        //用来配置端点的安全约束
+        //访问：/oauth/check_token放行
+        security.checkTokenAccess("permitAll()");
     }
 
    
@@ -160,7 +162,6 @@ public class AuthorizationServerConfigurer extends AuthorizationServerConfigurer
   }
     
     //tokensevice服务
-    @Bean
     public AuthorizationServerTokenServices tokenService() {
         DefaultTokenServices tokenService = new DefaultTokenServices();
         tokenService.setClientDetailsService(clientDetailsService);
@@ -170,7 +171,8 @@ public class AuthorizationServerConfigurer extends AuthorizationServerConfigurer
         tokenService.setSupportRefreshToken(true);
         tokenService.setAccessTokenValiditySeconds(60);
         tokenService.setRefreshTokenValiditySeconds(7200);
-        
+
+        //自定义service配置jwt增强器
         TokenEnhancerChain tokenEnhancerChain = new TokenEnhancerChain();
         tokenEnhancerChain.setTokenEnhancers(Arrays.asList(tokenEnhancer,jwtAccessTokenConverter()));
         tokenService.setTokenEnhancer(tokenEnhancerChain);
