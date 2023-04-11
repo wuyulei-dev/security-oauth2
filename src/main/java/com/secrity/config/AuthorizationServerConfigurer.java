@@ -9,6 +9,7 @@
  */
 package com.secrity.config;
 
+import java.util.Arrays;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,6 +26,8 @@ import org.springframework.security.oauth2.provider.code.AuthorizationCodeServic
 import org.springframework.security.oauth2.provider.code.InMemoryAuthorizationCodeServices;
 import org.springframework.security.oauth2.provider.token.AuthorizationServerTokenServices;
 import org.springframework.security.oauth2.provider.token.DefaultTokenServices;
+import org.springframework.security.oauth2.provider.token.TokenEnhancer;
+import org.springframework.security.oauth2.provider.token.TokenEnhancerChain;
 import org.springframework.security.oauth2.provider.token.store.JwtAccessTokenConverter;
 import org.springframework.security.oauth2.provider.token.store.JwtTokenStore;
 
@@ -41,6 +44,10 @@ public class AuthorizationServerConfigurer extends AuthorizationServerConfigurer
     
     @Autowired
     private AuthenticationManager authenticationManager;
+    
+    @Autowired
+    private TokenEnhancer tokenEnhancer;
+    
     /**
      * 配置客戶端信息 客户端详情信息写死在这里或者是通过数据库来存储调取详情信息。
      */
@@ -118,6 +125,13 @@ public class AuthorizationServerConfigurer extends AuthorizationServerConfigurer
         endpoints.authenticationManager(authenticationManager)  //密码模式配置:认证用户身份
                  .userDetailsService(userDetailsService)        //密码模式配置
                  .authorizationCodeServices(authorizationCodeServices()); //授权码模式配置：用来管理授权码
+        
+        //在端点中配置TokenEnhancerChain
+        /*TokenEnhancerChain tokenEnhancerChain = new TokenEnhancerChain();
+        tokenEnhancerChain.setTokenEnhancers(Arrays.asList(tokenEnhancer,jwtAccessTokenConverter()));
+        endpoints.tokenEnhancer(tokenEnhancerChain)
+                 .accessTokenConverter(jwtAccessTokenConverter());*/
+    
     }
     
     /**
@@ -151,11 +165,16 @@ public class AuthorizationServerConfigurer extends AuthorizationServerConfigurer
         DefaultTokenServices tokenService = new DefaultTokenServices();
         tokenService.setClientDetailsService(clientDetailsService);
         tokenService.setTokenStore(tokenStore());
-        //使用jwt 必须配置不然不会办法jtwToken
-        tokenService.setTokenEnhancer(jwtAccessTokenConverter());
+        //使用jwt 必须配置不然颁发的不是jtwToken
+//        tokenService.setTokenEnhancer(jwtAccessTokenConverter());
         tokenService.setSupportRefreshToken(true);
         tokenService.setAccessTokenValiditySeconds(60);
         tokenService.setRefreshTokenValiditySeconds(7200);
+        
+        TokenEnhancerChain tokenEnhancerChain = new TokenEnhancerChain();
+        tokenEnhancerChain.setTokenEnhancers(Arrays.asList(tokenEnhancer,jwtAccessTokenConverter()));
+        tokenService.setTokenEnhancer(tokenEnhancerChain);
+        
         return tokenService;
     }
     
