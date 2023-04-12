@@ -16,12 +16,14 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.config.annotation.configurers.ClientDetailsServiceConfigurer;
 import org.springframework.security.oauth2.config.annotation.web.configuration.AuthorizationServerConfigurerAdapter;
 import org.springframework.security.oauth2.config.annotation.web.configuration.EnableAuthorizationServer;
 import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerEndpointsConfigurer;
 import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerSecurityConfigurer;
 import org.springframework.security.oauth2.provider.ClientDetailsService;
+import org.springframework.security.oauth2.provider.client.JdbcClientDetailsService;
 import org.springframework.security.oauth2.provider.code.AuthorizationCodeServices;
 import org.springframework.security.oauth2.provider.code.InMemoryAuthorizationCodeServices;
 import org.springframework.security.oauth2.provider.token.AuthorizationServerTokenServices;
@@ -31,13 +33,13 @@ import org.springframework.security.oauth2.provider.token.TokenEnhancerChain;
 import org.springframework.security.oauth2.provider.token.store.JwtAccessTokenConverter;
 import org.springframework.security.oauth2.provider.token.store.JwtTokenStore;
 
+import javax.sql.DataSource;
+
 @Configuration
 @EnableAuthorizationServer   //Spring Security打开OAuth认证服务
 public class AuthorizationServerConfigurer extends AuthorizationServerConfigurerAdapter{
     
-    //配置客户端信息后会自动创建
-    @Autowired
-    private ClientDetailsService clientDetailsService;
+
     
     @Autowired
     private UserDetailsService userDetailsService;
@@ -47,6 +49,12 @@ public class AuthorizationServerConfigurer extends AuthorizationServerConfigurer
     
     @Autowired
     private TokenEnhancer tokenEnhancer;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private DataSource dataSource;
     
     /**
      * 配置客戶端信息 客户端详情信息写死在这里或者是通过数据库来存储调取详情信息。
@@ -58,17 +66,19 @@ public class AuthorizationServerConfigurer extends AuthorizationServerConfigurer
          * ClientDetailsServiceConfigurer能够使用内存或者JDBC来实现客户端详情服务(ClientDetailsService)
          * ClientDetailsService负责查找ClientDetails，一个ClientDetails代表一个需要接入的第三方应用，
          * 例如 我们上面提到的OAuth流程中的百度。ClientDetails中有几个重要的属性如下：
-         *      clientId:用来标识客户的ID。必须。 
-         *      secret: 客户端安全码，如果有的话。在微信登录中就是必须的。 
+         *      clientId:用来标识客户的ID。必须。
+         *      secret: 客户端安全码，如果有的话。在微信登录中就是必须的。
          *      scope：用来限制客户端的访问范围，如果是空(默认)的话，那么客户端拥有全部的访问范围。
          *      authrizedGrantTypes：此客户端可以使用的授权类型，默认为空。在微信登录中，只支持
-         *              authorization_code这一种。 
-         *      authorities：此客户端可以使用的权限(基于Spring Securityauthorities) 
+         *              authorization_code这一种。
+         *      authorities：此客户端可以使用的权限(基于Spring Securityauthorities)
          *      redirectUris：回调地址。授权服务会往该回调地址推送此客户端相关的信息。
          * ClientDetails客户端详情，能够在应用程序运行的时候进行更新，可以通过访问底层的存储服务(例如访问mysql，就提供了JdbcClientDetailsService)
          * 或者通过自己实现ClientRegisterationService接口(同时也可以实现ClientDetailsService接口)来进行定制。
          */
-        //内存方式存儲客戶端信息
+
+
+       /* //内存方式存儲客戶端信息
         clients.inMemory()
             .withClient("cl1")  //客戶端id
             .secret(new BCryptPasswordEncoder().encode("123")) //密匙
@@ -77,10 +87,10 @@ public class AuthorizationServerConfigurer extends AuthorizationServerConfigurer
             .redirectUris("http://www.baidu.com")  //重定向url
             .accessTokenValiditySeconds(3600)  //token有效時間
             .refreshTokenValiditySeconds(3600)  //refresh有效時間
-            .authorizedGrantTypes("authorization_code","password", "refresh_token"); //支持的授權類型
-        
-     // 加载自定义的客户端管理服务
-     // clients.withClientDetails(clientDetailsService)
+            .authorizedGrantTypes("authorization_code","password", "refresh_token"); //支持的授權類型*/
+
+        //数据库存储客户端信息
+        clients.withClientDetails(clientDetailService());
     }
     
     
@@ -127,7 +137,7 @@ public class AuthorizationServerConfigurer extends AuthorizationServerConfigurer
                  .userDetailsService(userDetailsService)        //密码模式配置
                  .authorizationCodeServices(authorizationCodeServices()); //授权码模式配置：用来管理授权码
         
-        //在端点中配置TokenEnhancerChain
+        //在端点中配置TokenEnhancerChain 如果自定义了tokenService，就不能再这里配置
         /*TokenEnhancerChain tokenEnhancerChain = new TokenEnhancerChain();
         tokenEnhancerChain.setTokenEnhancers(Arrays.asList(tokenEnhancer,jwtAccessTokenConverter()));
         endpoints.tokenEnhancer(tokenEnhancerChain)
@@ -146,7 +156,13 @@ public class AuthorizationServerConfigurer extends AuthorizationServerConfigurer
         security.checkTokenAccess("permitAll()");
     }
 
-   
+    @Bean
+    public ClientDetailsService clientDetailService(){
+        JdbcClientDetailsService jdbcClientDetailsService = new JdbcClientDetailsService(dataSource);
+        jdbcClientDetailsService.setPasswordEncoder(passwordEncoder);//设置编码、解码器
+        return  jdbcClientDetailsService;
+    }
+
     //toen存储策略
     @Bean
     public JwtTokenStore tokenStore() {
@@ -164,7 +180,7 @@ public class AuthorizationServerConfigurer extends AuthorizationServerConfigurer
     //tokensevice服务
     public AuthorizationServerTokenServices tokenService() {
         DefaultTokenServices tokenService = new DefaultTokenServices();
-        tokenService.setClientDetailsService(clientDetailsService);
+        tokenService.setClientDetailsService(clientDetailService());
         tokenService.setTokenStore(tokenStore());
         //使用jwt 必须配置不然颁发的不是jtwToken
 //        tokenService.setTokenEnhancer(jwtAccessTokenConverter());
