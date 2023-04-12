@@ -14,19 +14,20 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
-public class SecrityConfig extends WebSecurityConfigurerAdapter{
+public class SecrityConfig extends WebSecurityConfigurerAdapter {
 
-   
+
     //密码器
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-    
+
     //认证管理器
     @Bean
     @Override
@@ -38,11 +39,14 @@ public class SecrityConfig extends WebSecurityConfigurerAdapter{
     protected void configure(
         HttpSecurity http) throws Exception {
         http.authorizeHttpRequests()
-            .anyRequest().authenticated()
-            .and()
-            .formLogin()
-            .and()
-            .oauth2Login();//使用oauth2认证
+                .anyRequest().authenticated()
+                .and()
+                .formLogin()
+                .and()
+                .oauth2Login()//使用oauth2认证
+                .and()
+                .csrf().disable()
+                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.NEVER);
     }
 
 }
