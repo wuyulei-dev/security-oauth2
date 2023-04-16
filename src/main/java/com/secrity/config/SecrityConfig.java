@@ -41,7 +41,7 @@ public class SecrityConfig extends WebSecurityConfigurerAdapter {
         http.authorizeHttpRequests()
                 .anyRequest().authenticated()
                 .and()
-                .formLogin()
+                .formLogin()  //前后端分离时需去掉登陆页时，去掉该配置
                 .and()
                 .oauth2Login()//使用oauth2认证
                 .and()

@@ -42,10 +42,10 @@ public class AuthorizationServerConfigurer extends AuthorizationServerConfigurer
 
     
     @Autowired
-    private UserDetailsService userDetailsService;
+    private UserDetailsService userDetailsService;  // 该对象将为刷新token提供支持
     
     @Autowired
-    private AuthenticationManager authenticationManager;
+    private AuthenticationManager authenticationManager; // 该对象将用来支持password模式
     
     @Autowired
     private TokenEnhancer tokenEnhancer;
@@ -134,7 +134,7 @@ public class AuthorizationServerConfigurer extends AuthorizationServerConfigurer
          */
         
         endpoints.authenticationManager(authenticationManager)  //密码模式配置:认证用户身份
-                 .userDetailsService(userDetailsService)        //密码模式配置
+                 .userDetailsService(userDetailsService)        //为刷新token提供支持
                  .authorizationCodeServices(authorizationCodeServices()); //授权码模式配置：用来管理授权码
         
         //在端点中配置TokenEnhancerChain 如果自定义了tokenService，就不能再这里配置
